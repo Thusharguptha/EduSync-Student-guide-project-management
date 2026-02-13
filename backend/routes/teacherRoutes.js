@@ -3,6 +3,7 @@ import { auth } from '../middleware/authMiddleware.js';
 import { permit } from '../middleware/roleMiddleware.js';
 import {
   getStudents,
+  getAdmins,
   getProjects,
   approveProject,
   submitFeedback,
@@ -23,6 +24,7 @@ const router = Router();
 router.use(auth, permit('teacher'));
 
 router.get('/students', getStudents);
+router.get('/admins', getAdmins);
 router.get('/projects', getProjects);
 router.post('/approve-project', approveProject);
 router.post('/submit-feedback', submitFeedback);

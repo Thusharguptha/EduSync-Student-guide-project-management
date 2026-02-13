@@ -175,6 +175,11 @@ export default function AdminDashboard() {
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
           <p className="text-white/80">Manage users, monitor system overview, and analytics</p>
+          <div className="mt-4">
+            <a href="/admin/chat" className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium backdrop-blur-sm border border-white/10">
+              <span>💬</span> Messages
+            </a>
+          </div>
         </div>
 
         {/* View Switcher */}

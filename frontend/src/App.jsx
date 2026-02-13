@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import AdminDashboard from './pages/admin/AdminDashboard.jsx'
+import AdminChat from './pages/admin/AdminChat.jsx'
 import TeacherDashboard from './pages/teacher/TeacherDashboard.jsx'
 import StudentDashboard from './pages/student/StudentDashboard.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
@@ -20,6 +21,14 @@ export default function App() {
         element={
           <ProtectedRoute roles={["admin"]}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/chat"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <AdminChat />
           </ProtectedRoute>
         }
       />

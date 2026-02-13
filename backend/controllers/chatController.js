@@ -18,8 +18,27 @@ export const getDirectHistory = async (req, res) => {
 
 export const getBroadcastHistory = async (req, res) => {
   const userId = req.user._id.toString();
-  // For teacher: their own broadcast room
+  // For admin: their broadcasts to teachers
+  if (req.user.role === 'admin') {
+    const messages = await ChatMessage.find({ roomType: 'broadcast', roomId: 'broadcast:teachers' })
+      .sort({ createdAt: 1 })
+      .limit(200)
+      .populate('senderId', 'name role');
+    return res.json(messages);
+  }
+
+  // For teacher: their own broadcasts OR broadcasts from admin
   if (req.user.role === 'teacher') {
+    // Check if fetching admin broadcasts
+    if (req.query.source === 'admin') {
+      const messages = await ChatMessage.find({ roomType: 'broadcast', roomId: 'broadcast:teachers' })
+        .sort({ createdAt: 1 })
+        .limit(200)
+        .populate('senderId', 'name role');
+      return res.json(messages);
+    }
+
+    // Default: their own broadcasts to students
     const roomId = `broadcast:${userId}`;
     const messages = await ChatMessage.find({ roomType: 'broadcast', roomId })
       .sort({ createdAt: 1 })

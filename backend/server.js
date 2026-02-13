@@ -82,24 +82,34 @@ io.on('connection', async (socket) => {
       socket.join(roomId);
     });
     socket.join(`broadcast:${id}`);
+    socket.join('broadcast:teachers'); // NEW: Teachers listen to admin broadcasts
   }
 
   socket.on('chat:send', async (payload) => {
     const { toUserId, text, mode } = payload || {};
     if (!text || !mode) return;
-    let roomType = mode === 'broadcast' ? 'broadcast' : 'direct';
+    let roomType = mode; // 'direct', 'broadcast', 'broadcast_teachers'
     let roomId;
     let receiverId = null;
 
-    if (roomType === 'direct') {
+    if (mode === 'direct') {
       if (!toUserId) return;
       const a = id;
       const b = toUserId;
-      roomId = `direct:${a}:${b}`;
+      // Sort IDs to ensure consistent room ID
+      const ids = [a, b].sort();
+      roomId = `direct:${ids[0]}:${ids[1]}`; // Consistent room ID logic
       receiverId = toUserId;
-    } else {
-      if (role !== 'teacher') return; // only teacher broadcasts
+    } else if (mode === 'broadcast') {
+      if (role !== 'teacher') return; // only teacher broadcasts to students
       roomId = `broadcast:${id}`;
+      roomType = 'broadcast';
+    } else if (mode === 'broadcast_teachers') {
+      if (role !== 'admin') return; // only admin broadcasts to teachers
+      roomId = 'broadcast:teachers';
+      roomType = 'broadcast';
+    } else {
+      return;
     }
 
     const msg = await ChatMessage.create({
@@ -120,14 +130,18 @@ io.on('connection', async (socket) => {
       createdAt: msg.createdAt,
     };
 
-    if (roomType === 'direct') {
+    if (mode === 'direct') {
       io.to(`user:${id}`).emit('chat:message', enriched);
       io.to(`user:${toUserId}`).emit('chat:message', enriched);
-    } else {
+    } else if (mode === 'broadcast') {
       io.to(`broadcast:${id}`).emit('chat:message', enriched);
+    } else if (mode === 'broadcast_teachers') {
+      io.to('broadcast:teachers').emit('chat:message', enriched);
+      io.to(`user:${id}`).emit('chat:message', enriched); // Send back to admin
     }
   });
 });
+
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

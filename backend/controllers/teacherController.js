@@ -13,6 +13,16 @@ export const getStudents = async (req, res) => {
   res.json(allocs);
 };
 
+export const getAdmins = async (req, res) => {
+  try {
+    const User = (await import('../models/User.js')).default;
+    const admins = await User.find({ role: 'admin' }).select('name email');
+    res.json(admins);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const getProjects = async (req, res) => {
   const projects = await Project.find({ guideId: req.user._id })
     .populate('studentId', 'name email')
