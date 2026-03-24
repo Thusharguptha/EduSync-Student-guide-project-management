@@ -270,39 +270,43 @@ export const autoCreatePanels = async (req, res) => {
 
     // 4. Create panels
     const createdPanels = [];
-    let currentTeacherIndex = 0;
     let currentTime = new Date(startTime);
+    let busyTeachers = new Set();
+    let currentRoomIndex = 0;
 
     for (let i = 0; i < studentGroups.length; i++) {
-      const group = studentGroups[i];
-      
-      // Select teachers (Round-robin)
-      const selectedTeachers = [];
-      for (let j = 0; j < teachersPerPanel; j++) {
-        selectedTeachers.push(teachers[currentTeacherIndex % teachers.length]._id);
-        currentTeacherIndex++;
-      }
+        const group = studentGroups[i];
+        
+        // Find available teachers for this slot
+        const availableTeachers = teachers.filter(t => !busyTeachers.has(t._id.toString()));
+        
+        // If not enough teachers or we ran out of rooms for this slot, move to next time slot
+        if (availableTeachers.length < teachersPerPanel || currentRoomIndex >= rooms.length) {
+            currentTime = new Date(currentTime.getTime() + durationMins * 60000);
+            busyTeachers.clear();
+            currentRoomIndex = 0;
+            // Retry selecting available teachers for the new slot
+            // Since we moved time, we need to pick from the full list again
+            i--; // Decrement i so the loop re-processes this same group
+            continue;
+        }
 
-      // Select Room (Round-robin based on room array index)
-      // If we have multiple rooms, we might want to group panels at the same time?
-      // For simplicity: each panel gets a timeslot. We rotate rooms.
-      // Better: Each "slot" uses all rooms simultaneously.
-      
-      const roomIndex = i % rooms.length;
-      const room = rooms[roomIndex].trim();
+        // Select Teachers (Sequential from the available list)
+        // We'll just take the top ones from available list
+        const selectedTeachers = availableTeachers.slice(0, teachersPerPanel).map(t => t._id);
+        selectedTeachers.forEach(id => busyTeachers.add(id.toString()));
 
-      // If we've used all rooms, move the time forward
-      if (i > 0 && roomIndex === 0) {
-        currentTime = new Date(currentTime.getTime() + durationMins * 60000);
-      }
+        // Select Room
+        const room = rooms[currentRoomIndex].trim();
+        currentRoomIndex++;
 
-      const panel = await Panel.create({
-        members: selectedTeachers,
-        students: group,
-        room,
-        timeSlot: new Date(currentTime)
-      });
-      createdPanels.push(panel);
+        const panel = await Panel.create({
+            members: selectedTeachers,
+            students: group,
+            room,
+            timeSlot: new Date(currentTime)
+        });
+        createdPanels.push(panel);
     }
 
     res.status(201).json({ 
