@@ -235,3 +235,81 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ message: 'Error deleting user', error: error.message });
   }
 };
+export const autoCreatePanels = async (req, res) => {
+  try {
+    const { startTime, durationMins, studentsPerPanel, teachersPerPanel, rooms } = req.body;
+    if (!startTime || !durationMins || !studentsPerPanel || !teachersPerPanel || !rooms || rooms.length === 0) {
+      return res.status(400).json({ message: 'Missing required scheduling parameters' });
+    }
+
+    const Panel = (await import('../models/Panel.js')).default;
+    
+    // 1. Get all students not in a panel
+    const existingPanels = await Panel.find().select('students');
+    const assignedStudents = existingPanels.flatMap(p => p.students.map(s => s.toString()));
+    const unassignedStudents = await User.find({ 
+      role: 'student', 
+      _id: { $nin: assignedStudents } 
+    }).select('_id');
+
+    if (unassignedStudents.length === 0) {
+      return res.status(400).json({ message: 'No unassigned students found' });
+    }
+
+    // 2. Get all teachers
+    const teachers = await User.find({ role: 'teacher' }).select('_id');
+    if (teachers.length < teachersPerPanel) {
+        return res.status(400).json({ message: `Not enough teachers. Need at least ${teachersPerPanel}.` });
+    }
+
+    // 3. Create groups of students
+    const studentGroups = [];
+    for (let i = 0; i < unassignedStudents.length; i += studentsPerPanel) {
+      studentGroups.push(unassignedStudents.slice(i, i + studentsPerPanel).map(s => s._id));
+    }
+
+    // 4. Create panels
+    const createdPanels = [];
+    let currentTeacherIndex = 0;
+    let currentTime = new Date(startTime);
+
+    for (let i = 0; i < studentGroups.length; i++) {
+      const group = studentGroups[i];
+      
+      // Select teachers (Round-robin)
+      const selectedTeachers = [];
+      for (let j = 0; j < teachersPerPanel; j++) {
+        selectedTeachers.push(teachers[currentTeacherIndex % teachers.length]._id);
+        currentTeacherIndex++;
+      }
+
+      // Select Room (Round-robin based on room array index)
+      // If we have multiple rooms, we might want to group panels at the same time?
+      // For simplicity: each panel gets a timeslot. We rotate rooms.
+      // Better: Each "slot" uses all rooms simultaneously.
+      
+      const roomIndex = i % rooms.length;
+      const room = rooms[roomIndex].trim();
+
+      // If we've used all rooms, move the time forward
+      if (i > 0 && roomIndex === 0) {
+        currentTime = new Date(currentTime.getTime() + durationMins * 60000);
+      }
+
+      const panel = await Panel.create({
+        members: selectedTeachers,
+        students: group,
+        room,
+        timeSlot: new Date(currentTime)
+      });
+      createdPanels.push(panel);
+    }
+
+    res.status(201).json({ 
+        message: `Successfully created ${createdPanels.length} panels`,
+        count: createdPanels.length 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error automating panels', error: error.message });
+  }
+};

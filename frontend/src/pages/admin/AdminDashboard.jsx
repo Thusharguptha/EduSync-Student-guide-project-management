@@ -15,6 +15,8 @@ export default function AdminDashboard() {
   const [showPassword, setShowPassword] = useState(false)
   const [allocForm, setAllocForm] = useState({ studentId: '', teacherId: '' })
   const [panelForm, setPanelForm] = useState({ members: [], students: [], room: '', timeSlot: '' })
+  const [autoPanelForm, setAutoPanelForm] = useState({ startTime: '', durationMins: 30, studentsPerPanel: 5, teachersPerPanel: 2, rooms: '' })
+  const [generatingPanels, setGeneratingPanels] = useState(false)
   const teachers = useMemo(() => users.filter(u => u.role === 'teacher'), [users])
   const students = useMemo(() => users.filter(u => u.role === 'student'), [users])
 
@@ -80,6 +82,27 @@ export default function AdminDashboard() {
     await api.post('/api/admin/panels', body)
     setPanelForm({ members: [], students: [], room: '', timeSlot: '' })
     fetchAll()
+  }
+
+  const handleAutoGeneratePanels = async (e) => {
+    e.preventDefault()
+    if (!confirm('This will automatically group unassigned students and create panels. Proceed?')) return
+    
+    setGeneratingPanels(true)
+    try {
+      const body = {
+        ...autoPanelForm,
+        rooms: autoPanelForm.rooms.split(',').map(r => r.trim()).filter(r => r),
+        startTime: new Date(autoPanelForm.startTime)
+      }
+      await api.post('/api/admin/auto-panels', body)
+      alert('Panels generated successfully!')
+      fetchAll()
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error generating panels')
+    } finally {
+      setGeneratingPanels(false)
+    }
   }
 
   // Bulk register functions
@@ -443,6 +466,79 @@ export default function AdminDashboard() {
                   </button>
                 </form>
               </div>
+            </section>
+
+            {/* Auto Generate Panels */}
+            <section className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-white/20">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">⚡ Auto-Generate Panels</h2>
+                <p className="text-gray-600 text-sm">Automatically group students and assign teachers/rooms</p>
+              </div>
+              <form onSubmit={handleAutoGeneratePanels} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                    value={autoPanelForm.startTime}
+                    onChange={e => setAutoPanelForm(v => ({ ...v, startTime: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration per Panel (mins)</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                    value={autoPanelForm.durationMins}
+                    onChange={e => setAutoPanelForm(v => ({ ...v, durationMins: parseInt(e.target.value) }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Students per Panel</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                    value={autoPanelForm.studentsPerPanel}
+                    onChange={e => setAutoPanelForm(v => ({ ...v, studentsPerPanel: parseInt(e.target.value) }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Teachers per Panel</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                    value={autoPanelForm.teachersPerPanel}
+                    onChange={e => setAutoPanelForm(v => ({ ...v, teachersPerPanel: parseInt(e.target.value) }))}
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rooms (Comma separated)</label>
+                  <input
+                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                    placeholder="e.g. Lab 1, Lab 2, Hall 1"
+                    value={autoPanelForm.rooms}
+                    onChange={e => setAutoPanelForm(v => ({ ...v, rooms: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="md:col-span-full">
+                  <button
+                    type="submit"
+                    disabled={generatingPanels}
+                    className="w-full rounded-lg py-3 px-4 font-medium text-white transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99] shadow-lg disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+                      boxShadow: '0 10px 25px rgba(6, 182, 212, 0.3)'
+                    }}
+                  >
+                    {generatingPanels ? 'Generating...' : '🚀 Generate Panels Automatically'}
+                  </button>
+                </div>
+              </form>
             </section>
 
             {/* Available Panels */}

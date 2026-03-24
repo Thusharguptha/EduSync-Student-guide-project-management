@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { auth } from '../middleware/authMiddleware.js';
 import { permit } from '../middleware/roleMiddleware.js';
-import { listUsers, createUser, allocateGuide, listAllocations, createPanel, listPanels, dashboardStats, deleteUser, bulkRegisterUsers, getAllUsers, updateUser } from '../controllers/adminController.js';
+import { listUsers, createUser, allocateGuide, listAllocations, createPanel, listPanels, dashboardStats, deleteUser, bulkRegisterUsers, getAllUsers, updateUser, autoCreatePanels } from '../controllers/adminController.js';
 import { excelUploader } from '../utils/uploader.js';
 
 const router = Router();
@@ -20,6 +20,7 @@ router.delete('/users/:id', deleteUser);
 router.post('/allocate', allocateGuide);
 router.get('/allocations', listAllocations);
 router.post('/panels', createPanel);
+router.post('/auto-panels', autoCreatePanels);
 router.get('/panels', listPanels);
 router.get('/dashboard-stats', dashboardStats);
 
